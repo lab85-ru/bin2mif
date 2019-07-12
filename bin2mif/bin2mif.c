@@ -31,6 +31,7 @@ int read_file(FILE * fi, uint8_t * buf, size_t *size);
 int write_file(FILE * fi, uint8_t * buf, size_t *size);
 
 const char PRINT_HELP[] = {
+" MIF: data width = 8 bit, adr width = 16 bit\n\r"
 " Run & Parameters:\n\r"
 " bin2mif -i <file-input-bin> -o <file-output.MIF>\n\r"
 " -i <file-input>\n\r"
@@ -49,21 +50,11 @@ int main(int argc, char* argv[])
 {
 	size_t file_size_in = 0;
     size_t result = 0;
-	uint32_t crc32_mem = 0;
-	size_t firmware_header_i_size = 0; // размер заголовка входного файла
-	size_t firmware_header_o_size = 0; // размер заголовка выходного файла
-	uint32_t f_hlen  = 0;
-	uint32_t f_hcrc32 = 0;
 
 	struct stat stat_buf;
 	FILE * fi = 0;
 	int res = 0;
 	uint8_t *mem = NULL;   // ukazatel na buf-mem dla READ_WRITE SPI mem.
-	uint8_t *mem_cmp = NULL;   // ukazatel na buf-mem dla COMPARE FLASH - FILE.
-
-	uint8_t * f_head_p = 0;       // ”казатель на заголовок
-	int header_present = 0;         // =0 header not present, =1 header present !
-	int header_input_size = 0;      // длинна заголовка входного файла
 
 	param_opt_st param_opt;        // clean structure
 	param_opt.i_file_name = NULL;
@@ -149,7 +140,6 @@ int main(int argc, char* argv[])
 	    printf("- OK\n\r");
 	}
 
-
 	free(mem);
 
 	return 0;
@@ -225,7 +215,7 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size )
         return RET_ERROR;
     }
 
-	res |= fprintf(fo, "-- BIN2MIF converter (c) Svridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "-- BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
 	res |= fprintf(fo, "-- Ver %d.%d.%d\n\r", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
     res |= fprintf(fo, "DEPTH = %d;\n", buf_size);
