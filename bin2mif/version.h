@@ -7,7 +7,7 @@
 #define SOFT_VER_H   (0)
 
 // младщий номер версии (порядковый момер изменения)
-#define SOFT_VER_L   (1)
+#define SOFT_VER_L   (2)
 
 // год (в котором была создана данная версия софта)
 #define SOFT_VER_Y   (19)

@@ -27,15 +27,20 @@
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
 int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size );
+int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size );
 int read_file(FILE * fi, uint8_t * buf, size_t *size);
 int write_file(FILE * fi, uint8_t * buf, size_t *size);
 
 const char PRINT_HELP[] = {
 " MIF: data width = 8 bit, adr width = 16 bit\n\r"
+" COE: data width = 8 bit, adr width = .. bit\n\r"
 " Run & Parameters:\n\r"
-" bin2mif -i <file-input-bin> -o <file-output.MIF>\n\r"
-" -i <file-input>\n\r"
-" -o <file-output>\n\r"
+" bin2mif -mif -i <file-input-bin> -o <file-output.MIF>\n\r"
+" bin2mif -coe -i <file-input-bin> -o <file-output.COE>\n\r"
+" -i   <file-input>\n\r"
+" -o   <file-output>\n\r"
+" -mif output file to MIF format\n\r"
+" -coe output file to COE format\n\r"
 "--------------------------------------------------------------------------------\n\r"
 };
 
@@ -59,6 +64,7 @@ int main(int argc, char* argv[])
 	param_opt_st param_opt;        // clean structure
 	param_opt.i_file_name = NULL;
 	param_opt.o_file_name = NULL;
+	param_opt.output_type_file_e = NONE;
 
 
 	printf( PRINT_TIRE );
@@ -134,10 +140,27 @@ int main(int argc, char* argv[])
 
 	// ========================================================================================
 
-// write MIF to file
 	printf("Write file(%s) : ", param_opt.o_file_name);
-	if (generate_output_file_mif( param_opt.o_file_name, mem, file_size_in ) == RET_OK){
+
+	switch (param_opt.output_type_file_e){
+    case NONE:// write MIF to file
+    case MIF:
+	{
+        res = generate_output_file_mif( param_opt.o_file_name, mem, file_size_in );
+		break;
+	}// MIF ------------------------------
+
+    case COE:// write COE to file
+	{
+        res = generate_output_file_coe( param_opt.o_file_name, mem, file_size_in );
+		break;
+	}// COE ------------------------------
+	}// switch ---------------------------
+
+	if (res == RET_OK){
 	    printf("- OK\n\r");
+	} else {
+	    printf(" - ERROR\n\r");
 	}
 
 	free(mem);
@@ -243,5 +266,61 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size )
 
     fclose(fo);
     
+    return RET_OK;
+}
+
+//==============================================================================
+// generate output file COE
+//==============================================================================
+int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size )
+{
+    FILE *fo;
+    int res = 0;
+	uint32_t adr_count = 0;
+	uint32_t data = 0;
+
+    if (name == NULL){
+        printf("FATAL ERROR: generate_output_file_coe: name = NULL.\n");
+        return RET_ERROR;
+    }
+
+    fo = fopen(name, "wt");
+
+    if (fo == NULL){
+        printf("FATAL ERROR: generate_output_file fopen return error.\n");
+        return RET_ERROR;
+    }
+
+	res |= fprintf(fo, "; BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "; Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
+
+    res |= fprintf(fo, "memory_initialization_radix=16;\n");
+    res |= fprintf(fo, "memory_initialization_vector=\n");
+
+    for(adr_count=0; adr_count<buf_size; adr_count += 1){
+        if (res < 0){
+            printf("FATAL ERROR: file list write error.\n");
+            fclose(fo);
+            return RET_ERROR;
+        }
+
+		res |= fprintf(fo, "%02x", *(buf + adr_count) );
+        
+		if (adr_count <= buf_size - 2){
+			res |= fprintf(fo, ",\n");
+		}
+
+    } // for --------------------------------------------------------------------
+
+    res |= fprintf(fo, ";\n");
+
+	if (res < 0){
+		printf("ERROR: Write to file...\n");
+		fclose(fo);
+		return RET_ERROR;
+	}
+
+	fclose(fo);
+   
     return RET_OK;
 }
