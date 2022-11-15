@@ -26,8 +26,20 @@ int get_opt(const int argc, char** argv, param_opt_st *param_opt)
     i = 1;
     while(i != argc){
 		
-		// printf("string = %s\n\r", argv[i]);
-		// printf("     i = %d\n\r", i);
+		 //printf("string = %s\n\r", argv[i]);
+		 //printf("     i = %d\n\r", i);
+
+		if (strcmp("-datawidth", argv[i]) == 0){
+			if (i<argc){
+				i++;
+				if (conv_to_uint32(argv[i], &param_opt->data_width) < 0) {
+					return -1;
+				}
+				i++;
+				res++;
+			}else return -1;
+			continue;
+		}
 
 		if (strcmp("-mif", argv[i]) == 0){
 			if (param_opt->output_type_file_e == NONE){

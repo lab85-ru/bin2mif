@@ -1,5 +1,5 @@
 ; BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru
-; Ver 0.2.19
+; Ver 0.3.22
 memory_initialization_radix=16;
 memory_initialization_vector=
 00,
@@ -4096,5 +4096,4 @@ c6,
 e7,
 00,
 00,
-00,
-00;
+0000;

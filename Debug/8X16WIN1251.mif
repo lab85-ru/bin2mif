@@ -1,5 +1,5 @@
 -- BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru
--- Ver 0.2.19
+-- Ver 0.3.22
 DEPTH = 4096;
 WIDTH = 8;
 ADDRESS_RADIX = HEX;

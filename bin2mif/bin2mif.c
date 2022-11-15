@@ -26,21 +26,22 @@
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size );
-int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size );
+int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, const int data_width );
+int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, const int data_width );
 int read_file(FILE * fi, uint8_t * buf, size_t *size);
 int write_file(FILE * fi, uint8_t * buf, size_t *size);
 
 const char PRINT_HELP[] = {
-" MIF: data width = 8 bit, adr width = 16 bit\n\r"
-" COE: data width = 8 bit, adr width = .. bit\n\r"
+" MIF: data width = 8,16,32 bit, adr width = 16 bit\n\r"
+" COE: data width = 8,16,32 bit, adr width = .. bit\n\r"
 " Run & Parameters:\n\r"
-" bin2mif -mif -i <file-input-bin> -o <file-output.MIF>\n\r"
-" bin2mif -coe -i <file-input-bin> -o <file-output.COE>\n\r"
-" -i   <file-input>\n\r"
-" -o   <file-output>\n\r"
-" -mif output file to MIF format\n\r"
-" -coe output file to COE format\n\r"
+" bin2mif -mif -datawidth <x> -i <file-input-bin> -o <file-output.MIF>\n\r"
+" bin2mif -coe -datawidth <x> -i <file-input-bin> -o <file-output.COE>\n\r"
+" -i             - <file-input>\n\r"
+" -o             - <file-output>\n\r"
+" -mif           - output file to MIF format\n\r"
+" -coe           - output file to COE format\n\r"
+" -datawidth <x> - data width (8,16,32) bits to output file\n\r"
 "--------------------------------------------------------------------------------\n\r"
 };
 
@@ -65,6 +66,7 @@ int main(int argc, char* argv[])
 	param_opt.i_file_name = NULL;
 	param_opt.o_file_name = NULL;
 	param_opt.output_type_file_e = NONE;
+	param_opt.data_width = 8;
 
 
 	printf( PRINT_TIRE );
@@ -84,6 +86,11 @@ int main(int argc, char* argv[])
 	if (res == -1){
 		printf("\n\rERROR: input parameters.\n\r");
 		return 1;
+	}
+
+	if (param_opt.data_width != 8 && param_opt.data_width != 16 && param_opt.data_width != 32) {
+	    printf("\n\rERROR: input parameters Data Width (8, 16, 32 bit).\n\r");
+	    return 1;
 	}
 
 	{// file load -------------------------------------------------------------
@@ -146,13 +153,13 @@ int main(int argc, char* argv[])
     case NONE:// write MIF to file
     case MIF:
 	{
-        res = generate_output_file_mif( param_opt.o_file_name, mem, file_size_in );
+		res = generate_output_file_mif( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
 		break;
 	}// MIF ------------------------------
 
     case COE:// write COE to file
 	{
-        res = generate_output_file_coe( param_opt.o_file_name, mem, file_size_in );
+        res = generate_output_file_coe( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
 		break;
 	}// COE ------------------------------
 	}// switch ---------------------------
@@ -219,12 +226,15 @@ int write_file(FILE * fi, uint8_t * buf, size_t *size)
 //==============================================================================
 // generate output file MIF
 //==============================================================================
-int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size )
+int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, const int data_width )
 {
     FILE *fo;
     int res = 0;
 	uint32_t adr_count = 0;
 	uint32_t data = 0;
+	uint8_t  d8  = 0;
+	uint16_t d16 = 0;
+	uint32_t d32 = 0;
 
     if (name == NULL){
         printf("FATAL ERROR: generate_output_file_mif: name = NULL.\n");
@@ -241,8 +251,23 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size )
 	res |= fprintf(fo, "-- BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
 	res |= fprintf(fo, "-- Ver %d.%d.%d\n\r", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
-    res |= fprintf(fo, "DEPTH = %d;\n", buf_size);
-    res |= fprintf(fo, "WIDTH = %d;\n", 8);
+	switch (data_width) {
+		case 8:
+			res |= fprintf(fo, "DEPTH = %d;\n", buf_size);
+			res |= fprintf(fo, "WIDTH = %d;\n", 8);
+			break;
+
+		case 16:
+			res |= fprintf(fo, "DEPTH = %d;\n", buf_size / 2);
+			res |= fprintf(fo, "WIDTH = %d;\n", 16);
+			break;
+
+		case 32:
+			res |= fprintf(fo, "DEPTH = %d;\n", buf_size / 4);
+			res |= fprintf(fo, "WIDTH = %d;\n", 32);
+			break;
+
+    } // switch -------------------------------------
 
     res |= fprintf(fo, "ADDRESS_RADIX = HEX;\n");
     res |= fprintf(fo, "DATA_RADIX = HEX;\n");
@@ -250,16 +275,35 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size )
     res |= fprintf(fo, "CONTENT\n");
     res |= fprintf(fo, "BEGIN\n");
 
-    for(adr_count=0; adr_count<buf_size; adr_count += 1){
+	adr_count = 0;
+    while (adr_count < buf_size) {
         if (res < 0){
             printf("FATAL ERROR: file list write error.\n");
             fclose(fo);
             return RET_ERROR;
         }
 
-        //res |= fprintf(fo, "%04X : %04X;\n", adr_count, *(buf + adr_count) );
-		res |= fprintf(fo, "%04X : %02X;\n", adr_count, *(buf + adr_count) );
-        
+		switch (data_width) {
+			case 8:
+				d8 = *(buf + adr_count);
+				res |= fprintf(fo, "%04X : %02X;\n", adr_count, d8 );
+				adr_count += 1;
+				break;
+
+			case 16:
+				d16 = *((uint16_t*)buf + adr_count);
+				res |= fprintf(fo, "%04X : %04X;\n", adr_count, d16 );
+				adr_count += 1;
+				break;
+
+			case 32:
+				d32 = *((uint32_t*)buf + adr_count);
+				res |= fprintf(fo, "%04X : %08X;\n", adr_count, d32 );
+				adr_count += 1;
+				break;
+		} // switch --------------------------------------------------
+
+		
     } // for --------------------------------------------------------------------
 
     res = fprintf(fo,"END;\n");
@@ -272,12 +316,15 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size )
 //==============================================================================
 // generate output file COE
 //==============================================================================
-int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size )
+int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, const int data_width )
 {
     FILE *fo;
     int res = 0;
 	uint32_t adr_count = 0;
 	uint32_t data = 0;
+	uint16_t d8 = 0;
+	uint16_t d16 = 0;
+	uint32_t d32 = 0;
 
     if (name == NULL){
         printf("FATAL ERROR: generate_output_file_coe: name = NULL.\n");
@@ -297,15 +344,36 @@ int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size )
     res |= fprintf(fo, "memory_initialization_radix=16;\n");
     res |= fprintf(fo, "memory_initialization_vector=\n");
 
-    for(adr_count=0; adr_count<buf_size; adr_count += 1){
+	adr_count = 0;
+    while(adr_count < buf_size){
         if (res < 0){
             printf("FATAL ERROR: file list write error.\n");
             fclose(fo);
             return RET_ERROR;
         }
 
-		res |= fprintf(fo, "%02x", *(buf + adr_count) );
-        
+		switch (data_width) {
+			case 8:
+				d8 = *(buf + adr_count);
+				res |= fprintf(fo, "%02x", d8 );
+				adr_count += 1;
+				break;
+
+			case 16:
+				d16 = *((uint16_t*)buf + adr_count);
+				res |= fprintf(fo, "%04x", d16 );
+				adr_count += 1;
+				break;
+
+			case 32:
+				d32 = *((uint32_t*)buf + adr_count);
+				res |= fprintf(fo, "%08x", d32 );
+				adr_count += 1;
+				break;
+
+
+		}
+
 		if (adr_count <= buf_size - 2){
 			res |= fprintf(fo, ",\n");
 		}

@@ -17,6 +17,7 @@ typedef struct
 	int    output_type_file_e; // type file output (MIF or COE)
 	char * i_file_name;   // file name for I
 	char * o_file_name;   // file name for O
+	int    data_width;    // input/output data width (bits)
 }param_opt_st;
 
 int get_opt(const int argc, char** argv, param_opt_st *param_opt);
