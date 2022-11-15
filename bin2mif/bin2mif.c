@@ -235,6 +235,7 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, c
 	uint8_t  d8  = 0;
 	uint16_t d16 = 0;
 	uint32_t d32 = 0;
+	size_t in_data_length = 0;
 
     if (name == NULL){
         printf("FATAL ERROR: generate_output_file_mif: name = NULL.\n");
@@ -253,17 +254,32 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, c
 
 	switch (data_width) {
 		case 8:
-			res |= fprintf(fo, "DEPTH = %d;\n", buf_size);
+			in_data_length = buf_size;
+			break;
+	
+		case 16:
+			in_data_length = buf_size / 2;
+			break;
+	
+		case 32:
+			in_data_length = buf_size / 4;
+			break;
+	
+	} // switch -------------------------
+
+	switch (data_width) {
+		case 8:
+			res |= fprintf(fo, "DEPTH = %d;\n", in_data_length);
 			res |= fprintf(fo, "WIDTH = %d;\n", 8);
 			break;
 
 		case 16:
-			res |= fprintf(fo, "DEPTH = %d;\n", buf_size / 2);
+			res |= fprintf(fo, "DEPTH = %d;\n", in_data_length);
 			res |= fprintf(fo, "WIDTH = %d;\n", 16);
 			break;
 
 		case 32:
-			res |= fprintf(fo, "DEPTH = %d;\n", buf_size / 4);
+			res |= fprintf(fo, "DEPTH = %d;\n", in_data_length);
 			res |= fprintf(fo, "WIDTH = %d;\n", 32);
 			break;
 
@@ -276,7 +292,7 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, c
     res |= fprintf(fo, "BEGIN\n");
 
 	adr_count = 0;
-    while (adr_count < buf_size) {
+    while (adr_count < in_data_length) {
         if (res < 0){
             printf("FATAL ERROR: file list write error.\n");
             fclose(fo);
@@ -325,6 +341,7 @@ int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, c
 	uint16_t d8 = 0;
 	uint16_t d16 = 0;
 	uint32_t d32 = 0;
+	size_t in_data_length = 0;
 
     if (name == NULL){
         printf("FATAL ERROR: generate_output_file_coe: name = NULL.\n");
@@ -344,8 +361,23 @@ int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, c
     res |= fprintf(fo, "memory_initialization_radix=16;\n");
     res |= fprintf(fo, "memory_initialization_vector=\n");
 
+	switch (data_width) {
+		case 8:
+			in_data_length = buf_size;
+			break;
+	
+		case 16:
+			in_data_length = buf_size / 2;
+			break;
+	
+		case 32:
+			in_data_length = buf_size / 4;
+			break;
+	
+	} // switch -------------------------
+
 	adr_count = 0;
-    while(adr_count < buf_size){
+    while(adr_count < in_data_length){
         if (res < 0){
             printf("FATAL ERROR: file list write error.\n");
             fclose(fo);
@@ -371,10 +403,9 @@ int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, c
 				adr_count += 1;
 				break;
 
+		} // switch --------------------------------
 
-		}
-
-		if (adr_count <= buf_size - 2){
+		if (adr_count < in_data_length){
 			res |= fprintf(fo, ",\n");
 		}
 
