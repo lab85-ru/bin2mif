@@ -28,6 +28,7 @@
 // ----------------------------------------------------------------------------
 int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, const int data_width );
 int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, const int data_width );
+int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, const int data_width );
 int read_file(FILE * fi, uint8_t * buf, size_t *size);
 int write_file(FILE * fi, uint8_t * buf, size_t *size);
 
@@ -37,10 +38,12 @@ const char PRINT_HELP[] = {
 " Run & Parameters:\n\r"
 " bin2mif -mif -datawidth <x> -i <file-input-bin> -o <file-output.MIF>\n\r"
 " bin2mif -coe -datawidth <x> -i <file-input-bin> -o <file-output.COE>\n\r"
+" bin2mif -mem -datawidth <x> -i <file-input-bin> -o <file-output.MEM>\n\r"
 " -i             - <file-input>\n\r"
 " -o             - <file-output>\n\r"
 " -mif           - output file to MIF format\n\r"
 " -coe           - output file to COE format\n\r"
+" -mem           - output file to ModelSim format\n\r"
 " -datawidth <x> - data width (8,16,32) bits to output file\n\r"
 "--------------------------------------------------------------------------------\n\r"
 };
@@ -162,6 +165,13 @@ int main(int argc, char* argv[])
         res = generate_output_file_coe( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
 		break;
 	}// COE ------------------------------
+
+	case MEM:// write MEM to file
+	{
+        res = generate_output_file_mem( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
+		break;
+	}// MEM ------------------------------
+
 	}// switch ---------------------------
 
 	if (res == RET_OK){
@@ -412,6 +422,94 @@ int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, c
     } // for --------------------------------------------------------------------
 
     res |= fprintf(fo, ";\n");
+
+	if (res < 0){
+		printf("ERROR: Write to file...\n");
+		fclose(fo);
+		return RET_ERROR;
+	}
+
+	fclose(fo);
+   
+    return RET_OK;
+}
+
+//==============================================================================
+// generate output file MEM (For ModelSim format)
+//==============================================================================
+int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, const int data_width )
+{
+    FILE *fo;
+    int res = 0;
+	uint32_t adr_count = 0;
+	uint32_t data = 0;
+	uint16_t d8 = 0;
+	uint16_t d16 = 0;
+	uint32_t d32 = 0;
+	size_t in_data_length = 0;
+
+    if (name == NULL){
+        printf("FATAL ERROR: generate_output_file_coe: name = NULL.\n");
+        return RET_ERROR;
+    }
+
+    fo = fopen(name, "wt");
+
+    if (fo == NULL){
+        printf("FATAL ERROR: generate_output_file fopen return error.\n");
+        return RET_ERROR;
+    }
+
+	res |= fprintf(fo, "// BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "// Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
+
+    res |= fprintf(fo, "@00000000\n");
+
+	switch (data_width) {
+		case 8:
+			in_data_length = buf_size;
+			break;
+	
+		case 16:
+			in_data_length = buf_size / 2;
+			break;
+	
+		case 32:
+			in_data_length = buf_size / 4;
+			break;
+	
+	} // switch -------------------------
+
+	adr_count = 0;
+    while(adr_count < in_data_length){
+        if (res < 0){
+            printf("FATAL ERROR: file list write error.\n");
+            fclose(fo);
+            return RET_ERROR;
+        }
+
+		switch (data_width) {
+			case 8:
+				d8 = *(buf + adr_count);
+				res |= fprintf(fo, "%02x\n", d8 );
+				adr_count += 1;
+				break;
+
+			case 16:
+				d16 = *((uint16_t*)buf + adr_count);
+				res |= fprintf(fo, "%04x\n", d16 );
+				adr_count += 1;
+				break;
+
+			case 32:
+				d32 = *((uint32_t*)buf + adr_count);
+				res |= fprintf(fo, "%08x\n", d32 );
+				adr_count += 1;
+				break;
+
+		} // switch --------------------------------
+
+    } // for --------------------------------------------------------------------
 
 	if (res < 0){
 		printf("ERROR: Write to file...\n");
