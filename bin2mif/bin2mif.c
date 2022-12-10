@@ -26,9 +26,10 @@
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, const int data_width );
-int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, const int data_width );
-int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, const int data_width );
+int generate_output_file_mi( char *name, unsigned char *buf, size_t buf_size, const int data_width );  // Gowin
+int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, const int data_width ); // Altera/Intel
+int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, const int data_width ); // Xilinx
+int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, const int data_width ); // ModelSim
 int read_file(FILE * fi, uint8_t * buf, size_t *size);
 int write_file(FILE * fi, uint8_t * buf, size_t *size);
 
@@ -36,14 +37,16 @@ const char PRINT_HELP[] = {
 " MIF: data width = 8,16,32 bit, adr width = 16 bit\n\r"
 " COE: data width = 8,16,32 bit, adr width = .. bit\n\r"
 " Run & Parameters:\n\r"
+" bin2mif -mi  -datawidth <x> -i <file-input-bin> -o <file-output.MI>\n\r"
 " bin2mif -mif -datawidth <x> -i <file-input-bin> -o <file-output.MIF>\n\r"
 " bin2mif -coe -datawidth <x> -i <file-input-bin> -o <file-output.COE>\n\r"
 " bin2mif -mem -datawidth <x> -i <file-input-bin> -o <file-output.MEM>\n\r"
 " -i             - <file-input>\n\r"
 " -o             - <file-output>\n\r"
-" -mif           - output file to MIF format\n\r"
-" -coe           - output file to COE format\n\r"
-" -mem           - output file to ModelSim format\n\r"
+" -mi            - output file to MI  format (GoWin)\n\r"
+" -mif           - output file to MIF format (Altera/Intel)\n\r"
+" -coe           - output file to COE format (Xilinx)\n\r"
+" -mem           - output file to MEM format (ModelSim)\n\r"
 " -datawidth <x> - data width (8,16,32) bits to output file\n\r"
 "--------------------------------------------------------------------------------\n\r"
 };
@@ -169,6 +172,12 @@ int main(int argc, char* argv[])
 	case MEM:// write MEM to file
 	{
         res = generate_output_file_mem( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
+		break;
+	}// MEM ------------------------------
+
+	case MI:// write MI to file
+	{
+        res = generate_output_file_mi( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
 		break;
 	}// MEM ------------------------------
 
@@ -449,7 +458,7 @@ int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, c
 	size_t in_data_length = 0;
 
     if (name == NULL){
-        printf("FATAL ERROR: generate_output_file_coe: name = NULL.\n");
+        printf("FATAL ERROR: generate_output_file_mem: name = NULL.\n");
         return RET_ERROR;
     }
 
@@ -476,6 +485,100 @@ int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, c
 	
 		case 32:
 			in_data_length = buf_size / 4;
+			break;
+	
+	} // switch -------------------------
+
+	adr_count = 0;
+    while(adr_count < in_data_length){
+        if (res < 0){
+            printf("FATAL ERROR: file list write error.\n");
+            fclose(fo);
+            return RET_ERROR;
+        }
+
+		switch (data_width) {
+			case 8:
+				d8 = *(buf + adr_count);
+				res |= fprintf(fo, "%02x\n", d8 );
+				adr_count += 1;
+				break;
+
+			case 16:
+				d16 = *((uint16_t*)buf + adr_count);
+				res |= fprintf(fo, "%04x\n", d16 );
+				adr_count += 1;
+				break;
+
+			case 32:
+				d32 = *((uint32_t*)buf + adr_count);
+				res |= fprintf(fo, "%08x\n", d32 );
+				adr_count += 1;
+				break;
+
+		} // switch --------------------------------
+
+    } // for --------------------------------------------------------------------
+
+	if (res < 0){
+		printf("ERROR: Write to file...\n");
+		fclose(fo);
+		return RET_ERROR;
+	}
+
+	fclose(fo);
+   
+    return RET_OK;
+}
+
+//==============================================================================
+// generate output file MI (For GoWin format)
+//==============================================================================
+int generate_output_file_mi( char *name, unsigned char *buf, size_t buf_size, const int data_width )
+{
+    FILE *fo;
+    int res = 0;
+	uint32_t adr_count = 0;
+	uint32_t data = 0;
+	uint16_t d8 = 0;
+	uint16_t d16 = 0;
+	uint32_t d32 = 0;
+	size_t in_data_length = 0;
+
+    if (name == NULL){
+        printf("FATAL ERROR: generate_output_file_mi: name = NULL.\n");
+        return RET_ERROR;
+    }
+
+    fo = fopen(name, "wt");
+
+    if (fo == NULL){
+        printf("FATAL ERROR: generate_output_file fopen return error.\n");
+        return RET_ERROR;
+    }
+
+	res |= fprintf(fo, "# BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "# Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
+
+	res |= fprintf(fo, "#File_format=Hex\n");
+
+	switch (data_width) {
+		case 8:
+			in_data_length = buf_size;
+            res |= fprintf(fo, "#Address_depth=%d\n", in_data_length);
+			res |= fprintf(fo, "#Data_width=8\n");
+			break;
+	
+		case 16:
+			in_data_length = buf_size / 2;
+            res |= fprintf(fo, "#Address_depth=%d\n", in_data_length);
+			res |= fprintf(fo, "#Data_width=16\n");
+			break;
+	
+		case 32:
+			in_data_length = buf_size / 4;
+            res |= fprintf(fo, "#Address_depth=%d\n", in_data_length);
+			res |= fprintf(fo, "#Data_width=32\n");
 			break;
 	
 	} // switch -------------------------

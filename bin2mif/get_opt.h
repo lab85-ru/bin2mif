@@ -10,7 +10,7 @@
 typedef enum {GTS_ERROR, GTS_DEC, GTS_HEX} type_string_e;
 //typedef enum { OP_NONE = 0, OP_RD, OP_WR, OP_CMP, OP_ER } operation_e;
 
-typedef enum {NONE = 0, MIF = 1, COE = 2, MEM = 3} output_type_file_e;
+typedef enum {NONE = 0, MIF = 1, COE = 2, MEM = 3, MI = 4} output_type_file_e;
 
 typedef struct
 {
