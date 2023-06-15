@@ -89,6 +89,18 @@ int get_opt(const int argc, char** argv, param_opt_st *param_opt)
 			continue;
 		}
 
+		if (strcmp("-lattice_mem", argv[i]) == 0){
+			if (param_opt->output_type_file_e == NONE){
+			    param_opt->output_type_file_e = LATTICE_MEM;
+				i++;
+				res++;
+			} else {
+				printf("ERROR: set only -mif OR -coe OR -mi !!!\n");
+				return -1;
+			}
+			continue;
+		}
+
 		if (strcmp("-i", argv[i]) == 0){
 			//printf("Find: --read = ");
 			if (i<argc){

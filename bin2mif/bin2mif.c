@@ -30,29 +30,46 @@ int generate_output_file_mi( char *name, unsigned char *buf, size_t buf_size, co
 int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, const int data_width ); // Altera/Intel
 int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, const int data_width ); // Xilinx
 int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, const int data_width ); // ModelSim
+int generate_output_file_lattice_mem( char *name, unsigned char *buf, size_t buf_size, const int data_width ); // Lattice hex mem
 int read_file(FILE * fi, uint8_t * buf, size_t *size);
 int write_file(FILE * fi, uint8_t * buf, size_t *size);
 
+//-----------------------------------------------------------------------------
+// Calc: size 2*x >= data_size
+//-----------------------------------------------------------------------------
+unsigned int calc_data_size_2_mul_x(const unsigned int data_size)
+{
+    unsigned int i = 0;
+    unsigned int a = 0;
+
+	while (a < data_size) {
+	    a = 1 << i;
+		i++;
+	}
+    return a;
+}
+
 const char PRINT_HELP[] = {
-" MIF: data width = 8,16,32 bit, adr width = 16 bit\n\r"
-" COE: data width = 8,16,32 bit, adr width = .. bit\n\r"
-" Run & Parameters:\n\r"
-" bin2mif -mi  -datawidth <x> -i <file-input-bin> -o <file-output.MI>\n\r"
-" bin2mif -mif -datawidth <x> -i <file-input-bin> -o <file-output.MIF>\n\r"
-" bin2mif -coe -datawidth <x> -i <file-input-bin> -o <file-output.COE>\n\r"
-" bin2mif -mem -datawidth <x> -i <file-input-bin> -o <file-output.MEM>\n\r"
-" -i             - <file-input>\n\r"
-" -o             - <file-output>\n\r"
-" -mi            - output file to MI  format (GoWin)\n\r"
-" -mif           - output file to MIF format (Altera/Intel)\n\r"
-" -coe           - output file to COE format (Xilinx)\n\r"
-" -mem           - output file to MEM format (ModelSim)\n\r"
-" -datawidth <x> - data width (8,16,32) bits to output file\n\r"
-"--------------------------------------------------------------------------------\n\r"
+" MIF: data width = 8,16,32 bit, adr width = 16 bit\n"
+" COE: data width = 8,16,32 bit, adr width = .. bit\n"
+" Run & Parameters:\n"
+" bin2mif -mi  -datawidth <x> -i <file-input-bin> -o <file-output.MI>\n"
+" bin2mif -mif -datawidth <x> -i <file-input-bin> -o <file-output.MIF>\n"
+" bin2mif -coe -datawidth <x> -i <file-input-bin> -o <file-output.COE>\n"
+" bin2mif -mem -datawidth <x> -i <file-input-bin> -o <file-output.MEM>\n"
+" -i             - <file-input>\n"
+" -o             - <file-output>\n"
+" -mi            - output file to MI  format (GoWin)\n"
+" -mif           - output file to MIF format (Altera/Intel)\n"
+" -coe           - output file to COE format (Xilinx)\n"
+" -mem           - output file to MEM format (ModelSim)\n"
+" -lattice_mem   - output file to HEX MEM format (Lattice)\n"
+" -datawidth <x> - data width (8,16,32) bits to output file\n"
+"--------------------------------------------------------------------------------\n"
 };
 
-const char PRINT_TIRE[] = {"================================================================================\n\r"};
-const char PRINT_PROG_NAME[] = {" BIN2MIF Converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n\r"};
+const char PRINT_TIRE[] = {"================================================================================\n"};
+const char PRINT_PROG_NAME[] = {" BIN2MIF Converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n"};
 
 #define FILE_RW_BLOCK_SIZE (1024)
 #define FILE_SIZE_MAX      (1*1024*1024*1024)  // максимальный размер файла который можем обрабатывать
@@ -77,25 +94,25 @@ int main(int argc, char* argv[])
 
 	printf( PRINT_TIRE );
     printf( PRINT_PROG_NAME );
-	printf( " Ver %d.%d.%d\n\r", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
-    printf( " GIT = %s\n\r", git_commit_str );
+	printf( " Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
+    printf( " GIT = %s\n", git_commit_str );
 	printf( PRINT_TIRE );
 
 	if (argc == 1){
 	    printf( PRINT_HELP );
-		printf("Maximum input file size: %d bytes\n\r", FILE_SIZE_MAX);
+		printf("Maximum input file size: %d bytes\n", FILE_SIZE_MAX);
 		return 0;
 	}
 
 	// razbor perametrov
 	res = get_opt(argc, argv, &param_opt);
 	if (res == -1){
-		printf("\n\rERROR: input parameters.\n\r");
+		printf("\nERROR: input parameters.\n");
 		return 1;
 	}
 
 	if (param_opt.data_width != 8 && param_opt.data_width != 16 && param_opt.data_width != 32) {
-	    printf("\n\rERROR: input parameters Data Width (8, 16, 32 bit).\n\r");
+	    printf("\nERROR: input parameters Data Width (8, 16, 32 bit).\n");
 	    return 1;
 	}
 
@@ -103,27 +120,27 @@ int main(int argc, char* argv[])
 		printf(PRINT_TIRE);
 
 		if (stat(param_opt.i_file_name, &stat_buf) == -1){
-			printf("ERROR: fstat return error !\n\r");
+			printf("ERROR: fstat return error !\n");
 			return 1;
 		}
 		file_size_in = stat_buf.st_size;
 
     	// proverka diapazona offset+size <= density
 		if (file_size_in > FILE_SIZE_MAX ){
-			printf("ERROR: file is BIG !!! file_size( %lld ) > chip_size(+offset %lld )\n\r", (long long)stat_buf.st_size, (long long)(FILE_SIZE_MAX));
+			printf("ERROR: file is BIG !!! file_size( %lld ) > chip_size(+offset %lld )\n", (long long)stat_buf.st_size, (long long)(FILE_SIZE_MAX));
 			return 1;
 		}
 
     	mem = (uint8_t*)malloc( file_size_in );
 	    if (mem == NULL){
-		    printf("ERROR: malloc( size[  %d  ])\n\r", file_size_in);
+		    printf("ERROR: malloc( size[  %d  ])\n", file_size_in);
 		    return 1;
 	    }
 
-		printf("File size = %lld bytes.\n\r", (long long)stat_buf.st_size);
+		printf("File size = %lld bytes.\n", (long long)stat_buf.st_size);
 
 		if (file_size_in == 0){
-			printf("ERROR: file is empty.\n\r");
+			printf("ERROR: file is empty.\n");
 			return 1;
 		}
 
@@ -132,7 +149,7 @@ int main(int argc, char* argv[])
 		
 		fi = fopen(param_opt.i_file_name, "rb");
 		if ( fi == NULL ){
-			printf("ERROR: open file.\n\r");
+			printf("ERROR: open file.\n");
 			return 1;
 		}
 
@@ -147,7 +164,7 @@ int main(int argc, char* argv[])
 
 		//-------------------------------------------------------------------------
 
-		printf("- OK\n\r");
+		printf("- OK\n");
 	}// file load -------------------------------------------------------------
 
 
@@ -175,6 +192,12 @@ int main(int argc, char* argv[])
 		break;
 	}// MEM ------------------------------
 
+	case LATTICE_MEM:// write LATTICE_MEM to file
+	{
+        res = generate_output_file_lattice_mem( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
+		break;
+	}// MEM ------------------------------
+
 	case MI:// write MI to file
 	{
         res = generate_output_file_mi( param_opt.o_file_name, mem, file_size_in, param_opt.data_width );
@@ -184,9 +207,9 @@ int main(int argc, char* argv[])
 	}// switch ---------------------------
 
 	if (res == RET_OK){
-	    printf("- OK\n\r");
+	    printf("- OK\n");
 	} else {
-	    printf(" - ERROR\n\r");
+	    printf(" - ERROR\n");
 	}
 
 	free(mem);
@@ -269,7 +292,7 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, c
     }
 
 	res |= fprintf(fo, "-- BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
-	res |= fprintf(fo, "-- Ver %d.%d.%d\n\r", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
+	res |= fprintf(fo, "-- Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
 	switch (data_width) {
 		case 8:
@@ -488,6 +511,109 @@ int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, c
 			break;
 	
 	} // switch -------------------------
+
+	adr_count = 0;
+    while(adr_count < in_data_length){
+        if (res < 0){
+            printf("FATAL ERROR: file list write error.\n");
+            fclose(fo);
+            return RET_ERROR;
+        }
+
+		switch (data_width) {
+			case 8:
+				d8 = *(buf + adr_count);
+				res |= fprintf(fo, "%02x\n", d8 );
+				adr_count += 1;
+				break;
+
+			case 16:
+				d16 = *((uint16_t*)buf + adr_count);
+				res |= fprintf(fo, "%04x\n", d16 );
+				adr_count += 1;
+				break;
+
+			case 32:
+				d32 = *((uint32_t*)buf + adr_count);
+				res |= fprintf(fo, "%08x\n", d32 );
+				adr_count += 1;
+				break;
+
+		} // switch --------------------------------
+
+    } // for --------------------------------------------------------------------
+
+	if (res < 0){
+		printf("ERROR: Write to file...\n");
+		fclose(fo);
+		return RET_ERROR;
+	}
+
+	fclose(fo);
+   
+    return RET_OK;
+}
+
+//==============================================================================
+// generate output file LATTICE MEM HEX (For Lattice MEM HEX format)
+//==============================================================================
+int generate_output_file_lattice_mem( char *name, unsigned char *buf, size_t buf_size, const int data_width )
+{
+    FILE *fo;
+    int res = 0;
+	uint32_t adr_count = 0;
+	uint32_t data = 0;
+	uint16_t d8 = 0;
+	uint16_t d16 = 0;
+	uint32_t d32 = 0;
+	size_t in_data_length = 0;
+
+    if (name == NULL){
+        printf("FATAL ERROR: generate_output_file_mem: name = NULL.\n");
+        return RET_ERROR;
+    }
+
+    fo = fopen(name, "wt");
+
+    if (fo == NULL){
+        printf("FATAL ERROR: generate_output_file fopen return error.\n");
+        return RET_ERROR;
+    }
+
+	res |= fprintf(fo, "// BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "// Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
+
+	res |= fprintf(fo, "#Format=Hex\n");
+
+	switch (data_width) {
+		case 8:
+			in_data_length = buf_size;
+            res |= fprintf(fo, "#Depth=%d\n", calc_data_size_2_mul_x(in_data_length) );
+            res |= fprintf(fo, "#Width=8\n");
+			break;
+	
+		case 16:
+			in_data_length = buf_size / 2;
+            res |= fprintf(fo, "#Depth=%d\n", calc_data_size_2_mul_x(in_data_length) );
+            res |= fprintf(fo, "#Width=16\n");
+			break;
+	
+		case 32:
+			in_data_length = buf_size / 4;
+            res |= fprintf(fo, "#Depth=%d\n", calc_data_size_2_mul_x(in_data_length) );
+            res |= fprintf(fo, "#Width=32\n");
+			break;
+	
+	} // switch -------------------------
+
+	// radix:
+	//Binary: 0
+	//Octal: 1
+	//Decimal: 2
+	//Hexadecimal: 3
+	res |= fprintf(fo, "#AddrRadix=3\n");
+	res |= fprintf(fo, "#DataRadix=3\n");
+	res |= fprintf(fo, "#Data\n");
 
 	adr_count = 0;
     while(adr_count < in_data_length){
