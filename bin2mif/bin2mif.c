@@ -1,8 +1,13 @@
 // Конвертер BIN2MIF
 //
+// Конвертация двоичных файлов в форматы для загрузки в FPGA:
+// Altera/Intel - MIF 
+// Xilinx/AMD   - COE
+// ModelSim     - MEM
+// GoWin        - MI
+// Lattice      - HEX MEM
 //
-// Версия v0.1 ----------------------------------------------------------------
-// разрядность данных: 8 бит
+// разрядность данных: 8, 16, 32 бит
 // разрядность адреса: 16 бит
 //-----------------------------------------------------------------------------
 #define _CRT_SECURE_NO_WARNINGS
@@ -21,7 +26,6 @@
 
 #define RET_ERROR     (1)
 #define RET_OK        (0)
-
 
 
 // ----------------------------------------------------------------------------
@@ -57,6 +61,7 @@ const char PRINT_HELP[] = {
 " bin2mif -mif -datawidth <x> -i <file-input-bin> -o <file-output.MIF>\n"
 " bin2mif -coe -datawidth <x> -i <file-input-bin> -o <file-output.COE>\n"
 " bin2mif -mem -datawidth <x> -i <file-input-bin> -o <file-output.MEM>\n"
+" bin2mif -lattice_mem -datawidth <x> -i <file-input-bin> -o <file-output.MEM>\n"
 " -i             - <file-input>\n"
 " -o             - <file-output>\n"
 " -mi            - output file to MI  format (GoWin)\n"
@@ -291,7 +296,7 @@ int generate_output_file_mif( char *name, unsigned char *buf, size_t buf_size, c
         return RET_ERROR;
     }
 
-	res |= fprintf(fo, "-- BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "-- %s", PRINT_PROG_NAME);
 	res |= fprintf(fo, "-- Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
 	switch (data_width) {
@@ -397,7 +402,7 @@ int generate_output_file_coe( char *name, unsigned char *buf, size_t buf_size, c
         return RET_ERROR;
     }
 
-	res |= fprintf(fo, "; BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "; %s", PRINT_PROG_NAME);
 	res |= fprintf(fo, "; Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
     res |= fprintf(fo, "memory_initialization_radix=16;\n");
@@ -492,7 +497,7 @@ int generate_output_file_mem( char *name, unsigned char *buf, size_t buf_size, c
         return RET_ERROR;
     }
 
-	res |= fprintf(fo, "// BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "// %s", PRINT_PROG_NAME);
 	res |= fprintf(fo, "// Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
     res |= fprintf(fo, "@00000000\n");
@@ -580,7 +585,7 @@ int generate_output_file_lattice_mem( char *name, unsigned char *buf, size_t buf
         return RET_ERROR;
     }
 
-	res |= fprintf(fo, "// BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "// %s", PRINT_PROG_NAME);
 	res |= fprintf(fo, "// Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
 	res |= fprintf(fo, "#Format=Hex\n");
@@ -683,7 +688,7 @@ int generate_output_file_mi( char *name, unsigned char *buf, size_t buf_size, co
         return RET_ERROR;
     }
 
-	res |= fprintf(fo, "# BIN2MIF converter (c) Sviridov Georgy 2019, www.lab85.ru sgot@inbox.ru\n");
+	res |= fprintf(fo, "# %s", PRINT_PROG_NAME);
 	res |= fprintf(fo, "# Ver %d.%d.%d\n", SOFT_VER_H, SOFT_VER_L, SOFT_VER_Y );
 
 	res |= fprintf(fo, "#File_format=Hex\n");
